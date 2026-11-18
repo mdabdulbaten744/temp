@@ -1,0 +1,49 @@
+name: Record Cutout Studio hero clips
+
+on:
+  workflow_dispatch:
+    inputs:
+      resolution:
+        description: "Output resolution"
+        type: choice
+        options: ["1080p", "1440p"]
+        default: "1080p"
+      seed:
+        description: "Random seed"
+        default: "2026"
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unzip project
+        run: |
+          unzip -o hero-clips.zip
+          ls -R . | head -50
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Playwright + Chromium + ffmpeg
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+          which ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+
+      - name: Record the 4 clips
+        env:
+          RESOLUTION: ${{ inputs.resolution }}
+          SEED: ${{ inputs.seed }}
+        run: python record.py
+
+      - name: Upload clips
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutout-hero-clips
+          path: output/
+          if-no-files-found: warn
